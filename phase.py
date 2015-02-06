@@ -9,6 +9,7 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
 LOGGER = logging.getLogger(__name__)
 
+logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 #default rabbitmq settings
 LOCALHOST_SETTINGS = {'USER':'',
                       'PASSWORD':'',
@@ -46,7 +47,7 @@ class simpleAsyncPhase(object):
         # instanciating th class
         self.component = component
         uuid_str = str(uuid.uuid4())
-        self._classname = self.__class__.__name__
+        self._classname = self.component.__class__.__name__
         self.EXCHANGE = self._classname + '.exchange.' + uuid_str
         self.QUEUE = self._classname + '.queue.' + uuid_str
         self._app_id = self._classname
@@ -142,10 +143,11 @@ class simpleAsyncPhase(object):
         self._channel = None
         if self._closing:
             self._connection.ioloop.stop()
+            self._connection.ioloop.start()
+            self._connection.ioloop.close()
         else:
             LOGGER.warning('Connection closed, not sure what to do: (%s) %s',
                     reply_code, reply_text)
-            self.reconnect()
 
     def reconnect(self):
         """Will be invoked by the IOLoop timer if the connection is
@@ -309,6 +311,7 @@ class simpleAsyncPhase(object):
             msg_data = extract_control(msg)
             if self._is_sink:
                 if msg_data == ENDOFLIST:
+                    LOGGER.info('Stopping')
                     self.stop()
             #TODO send only if this queue is done processing
             message_to_send = controlmessage(msg_data)
@@ -427,5 +430,6 @@ class simpleAsyncPhase(object):
         LOGGER.info('Stopping')
         self._closing = True
         self.stop_consuming()
+        self.pipeline.stop()
         #self._connection.ioloop.start()
         LOGGER.info('Stopped')

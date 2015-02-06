@@ -47,17 +47,21 @@ class Pipeline(object):
         self._conf = conf
         self._phaseDag = phaseDag
         #create an IOLoop
-        self._ioloop = ioloop.IOLoop.current()
+        self._ioloop = ioloop.IOLoop.instance()
         self.setup()
 
     def setup(self):
         for i,phase in enumerate(self._phaseDag):
             #add the adapters to the ioloop
+            phase.pipeline = self
             self._ioloop.add_callback(phase.connect)
 
     def run(self):
         #start the source, and propagate the data through the dag
         self._ioloop.start()
+
+    def stop(self):
+        self._ioloop.clear_instance()
 
     def from_newick(self, newick_str):
         pass
